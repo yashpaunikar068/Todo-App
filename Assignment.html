@@ -1,0 +1,219 @@
+<html>
+<head>
+<script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+<style>
+	*{
+		background-color: burlywood;
+	}
+	input{
+	 padding:5px;
+	 margin:5px;
+	 
+	}
+	
+	table{
+		border-collapse:collapse;
+	}
+	
+	th, td{
+		border:1px solid grey;
+		padding:5px;
+	}
+	
+	button{ padding:5px; margin:5px;}
+</style>
+	
+</head>
+<body>
+	<div style="width:45%;float:left;minHeight:200px" id="root"></div>
+	<div style="width:45%;float:left;minHeight:200px" id="stubin"></div>
+	<div id="showMessage"></div>
+</body>
+
+</html>
+
+
+<script type="text/babel">
+	
+	class StudentsRecycleBin extends React.Component {
+		constructor(props){
+			super(props);
+			this.state = {cur_index:-1, prev_index:-1};
+			this.cached = [];			
+		}
+		
+		render() {
+			if(this.state.cur_index>=0 && this.state.cur_index!=this.state.prev_index){
+				this.cached.push(JSON.parse(this.props.stu));
+			}
+			
+			return (
+				<div>
+					<h1>Deleted Tasks</h1>
+					<div style={{margin:'10px', border:"1px solid black", padding:"10px", margin:"10px", minHeight:"200px"}}>
+						<table>
+							<thead><tr><th>Task</th><th>Action</th></tr></thead>							
+							<tbody>
+							{
+							this.cached.map((stu, index) => 
+								<tr key={index}>
+									<td>{stu.name}</td>
+									<td><button  onClick={()=> this.remove(stu, index)}>Remove</button> &nbsp; &nbsp; <button  onClick={()=> this.restore(index)}>Restore</button></td>
+								</tr> 
+								)
+							}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			);
+		}
+		
+		
+		remove = (index) => {
+			this.cached.splice(index,1);
+			this.setState({cur_index:-1});
+		}
+		
+		restore = (index) => {	
+			this.cached.splice(index,1);
+			console.log("after splice : ");
+			console.log(this.cached);
+			this.setState({cur_index:-1});
+			//write your code to add stu to Student Component using props	
+			ReactDOM.render(<Student index={index} stu={this.props.stu}/>, document.getElementById("root"));
+		}
+		
+		getSnapshotBeforeUpdate(prevProps, prevState) {
+			if(prevProps.index!=this.props.index){
+				this.setState({cur_index:this.props.index});
+			}
+			return null;
+		}
+		
+		componentDidUpdate(){
+			
+		}
+		
+		componentDidMount(){
+			this.setState({cur_index:this.props.index});
+		}
+	}
+	
+	class Student extends React.Component {
+		constructor(props){
+			super(props);
+			this.state = {students:[], name:'',index:-1};
+			this.cached = [];
+		}
+		
+		render() {
+			return (
+				<div>
+					<h1>Total Tasks {this.state.students.length}</h1>
+					<div style={{margin:'10px', border:"1px solid black", padding:"10px", margin:"10px", minHeight:"200px"}}>
+						<input type="text" onChange={this.setStateValue} name="name" style={{width:"100%"}} placeholder="Add Task" value={this.state.name}/><br/>
+						<button onClick={this.add} style={{width:"20%", background:"green", padding:"10px", border:"1px solid green", color:"white"}} >Add </button>
+						<button onClick={this.update} style={{width:"20%", background:"green", padding:"10px", border:"1px solid green", color:"white"}} >Update </button>
+						<table>
+							<thead><tr><th>Task</th><th>Action</th></tr></thead>							
+							<tbody>
+							{
+							this.state.students.map((stu, index) => 
+								<tr key={index}>
+									<td>{stu.name}</td>
+									<td><button  onClick={()=> this.edit(stu, index)}>Edit</button> &nbsp; &nbsp; <button  onClick={()=> this.remove(index)}>Remove</button></td>
+								</tr> 
+								)
+							}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			);
+		}
+		
+		setStateValue = (ele) =>{
+			this.setState({[ele.target.name]:ele.target.value});
+		}
+		
+		add = () => {	
+			if(this.state.name==""){
+				return;
+			}
+			const stu = {name:this.state.name, rollno:this.state.rollno, mobile:this.state.mobile};
+			this.setState({students:[...this.state.students,stu]});
+			this.setState({name:'',rollno:'', mobile:''});
+		}
+		
+		remove = (index) => {
+			const stu = JSON.stringify(this.state.students[index]);
+			const students = this.state.students;
+			students.splice(index,1);
+			this.setState({students:students});			
+			ReactDOM.render(<StudentsRecycleBin index={index} stu={stu}/>, document.getElementById("stubin"));
+		}
+		
+		edit = (st, index) => {
+			this.setState({name:st.name,rollno:st.rollno, mobile:st.mobile, index:index});
+		}
+		
+		update = () => {
+			const index = this.state.index;
+			const students = this.state.students;
+			if(index>=0){
+				students[index] = {name:this.state.name, rollno:this.state.rollno, mobile:this.state.mobile, index:-1};
+				this.setState({students:students});
+			}
+		}
+		
+		getStudents = () => {
+			fetch('https://raw.githubusercontent.com/satyawin007/msittest/master/students.json') 
+			.then(resp => resp.json())
+			.then(data => {
+				console.log(data);
+				this.setState({students:data});
+			});
+		}
+		
+		componentDidMount(){
+			this.getStudents();
+			
+			/*
+			const students = localStorage.getItem("students");
+			if(students!=null){
+				this.setState({students:JSON.parse(students)});
+			}
+
+			window.addEventListener("beforeunload", ()=>{
+				localStorage.setItem("students",JSON.stringify(this.state.students));
+			});
+			
+			this.test(5);
+			*/
+		}
+		
+		test = (index) => { alert("test "+index); }
+		
+		componentWillUnmount(){
+		}
+	}
+	
+	class App extends React.Component {
+		render() {
+			return (
+				<div>
+					<div >
+						<Student />
+					</div>					
+				</div>
+			);
+		}
+	}
+	
+	
+	ReactDOM.render(<App />, document.getElementById("root"));	
+</script>
